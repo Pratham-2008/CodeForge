@@ -1,5 +1,6 @@
 import { SupportedLanguage, ExecutionResult } from '../types';
 import { LANGUAGE_MAP } from '../data/languages';
+import { getApiUrl } from '../config/api';
 
 export interface Judge0ExecutionOptions {
   language: SupportedLanguage;
@@ -30,7 +31,7 @@ export async function runJudge0Code(
   }
 
   try {
-    const response = await fetch('/api/execute', {
+    const response = await fetch(getApiUrl('/api/execute'), {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'

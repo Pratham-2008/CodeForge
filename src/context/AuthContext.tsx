@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { User, UserRole } from '../types/auth';
+import { apiFetch } from '../config/api';
 
 interface AuthContextType {
   user: User | null;
@@ -48,22 +49,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
 
       try {
-        const res = await fetch('/api/auth/me', {
+        const response = await apiFetch<{ user: User }>('/api/auth/me', {
           headers: {
-            'Authorization': `Bearer ${activeToken}`,
-            'Content-Type': 'application/json'
+            'Authorization': `Bearer ${activeToken}`
           }
         });
 
-        if (res.ok) {
-          const data = await res.json();
-          setUser(data.user);
+        if (response.ok && response.data?.user) {
+          setUser(response.data.user);
           setToken(activeToken);
           // Keep storage in sync
           if (localStorage.getItem(TOKEN_KEY)) {
-            localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+            localStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
           } else {
-            sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
+            sessionStorage.setItem(USER_KEY, JSON.stringify(response.data.user));
           }
         } else {
           // Token invalid or expired
@@ -92,9 +91,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ): Promise<{ success: boolean; error?: string; user?: User }> => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/auth/login', {
+      const res = await apiFetch<{ token: string; user: User }>('/api/auth/login', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           email: email.trim(),
           password,
@@ -103,14 +101,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Authentication failed.' };
+      if (!res.ok || !res.data) {
+        return { success: false, error: res.error || 'Authentication failed. Please verify your credentials.' };
       }
 
-      const receivedToken = data.token;
-      const receivedUser: User = data.user;
+      const receivedToken = res.data.token;
+      const receivedUser: User = res.data.user;
 
       setToken(receivedToken);
       setUser(receivedUser);
@@ -146,9 +142,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   ): Promise<{ success: boolean; error?: string; user?: User }> => {
     try {
       setIsLoading(true);
-      const res = await fetch('/api/auth/register', {
+      const res = await apiFetch<{ token: string; user: User }>('/api/auth/register', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           fullName: fullName.trim(),
           email: email.trim(),
@@ -159,14 +154,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        return { success: false, error: data.error || 'Registration failed.' };
+      if (!res.ok || !res.data) {
+        return { success: false, error: res.error || 'Registration failed.' };
       }
 
-      const receivedToken = data.token;
-      const receivedUser: User = data.user;
+      const receivedToken = res.data.token;
+      const receivedUser: User = res.data.user;
 
       setToken(receivedToken);
       setUser(receivedUser);
@@ -199,22 +192,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfile = async (fullName: string): Promise<{ success: boolean; error?: string }> => {
     if (!token) return { success: false, error: 'Not authenticated.' };
     try {
-      const res = await fetch('/api/auth/update-profile', {
+      const res = await apiFetch<{ user: User }>('/api/auth/update-profile', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ fullName })
       });
-      const data = await res.json();
-      if (!res.ok) return { success: false, error: data.error || 'Failed to update profile.' };
+      if (!res.ok || !res.data) return { success: false, error: res.error || 'Failed to update profile.' };
 
-      setUser(data.user);
+      setUser(res.data.user);
       if (localStorage.getItem(TOKEN_KEY)) {
-        localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        localStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
       } else {
-        sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
+        sessionStorage.setItem(USER_KEY, JSON.stringify(res.data.user));
       }
       return { success: true };
     } catch (err: any) {
@@ -225,16 +216,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const changePassword = async (currentPassword: string, newPassword: string): Promise<{ success: boolean; error?: string }> => {
     if (!token) return { success: false, error: 'Not authenticated.' };
     try {
-      const res = await fetch('/api/auth/change-password', {
+      const res = await apiFetch<{ message: string }>('/api/auth/change-password', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ currentPassword, newPassword })
       });
-      const data = await res.json();
-      if (!res.ok) return { success: false, error: data.error || 'Failed to change password.' };
+      if (!res.ok) return { success: false, error: res.error || 'Failed to change password.' };
       return { success: true };
     } catch (err: any) {
       return { success: false, error: err.message };
@@ -243,13 +232,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const forgotPassword = async (email: string): Promise<{ success: boolean; message?: string }> => {
     try {
-      const res = await fetch('/api/auth/forgot-password', {
+      const res = await apiFetch<{ message: string }>('/api/auth/forgot-password', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       });
-      const data = await res.json();
-      return { success: true, message: data.message };
+      if (!res.ok) {
+        return { success: false, message: res.error || 'Could not send reset link.' };
+      }
+      return { success: true, message: res.data?.message || 'Password reset link sent.' };
     } catch (err: any) {
       return { success: false, message: err.message };
     }

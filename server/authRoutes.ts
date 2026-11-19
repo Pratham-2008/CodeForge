@@ -59,6 +59,151 @@ export async function handleAuthRoutes(req: IncomingMessage, res: ServerResponse
   const url = req.url?.split('?')[0] || '';
   const method = req.method;
 
+  // Set Production-ready CORS Headers on all /api routes
+  if (url.startsWith('/api') || req.headers['access-control-request-method']) {
+    res.setHeader('Access-Control-Allow-Origin', (req.headers.origin as string) || '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
+  // Preflight OPTIONS handling
+  if (method === 'OPTIONS' && (url.startsWith('/api') || req.headers['access-control-request-method'])) {
+    res.statusCode = 204;
+    res.end();
+    return true;
+  }
+
+  // Health endpoint
+  if (url === '/api/health' && method === 'GET') {
+    const hasKey = !!process.env.JUDGE0_API_KEY;
+    const endpoint = process.env.JUDGE0_ENDPOINT || 'https://ce.judge0.com';
+    sendJson(res, 200, {
+      status: 'ok',
+      judge0Endpoint: endpoint,
+      hasServerApiKey: hasKey,
+      environment: process.env.NODE_ENV || 'production',
+      timestamp: new Date().toISOString()
+    });
+    return true;
+  }
+
+  // Execute endpoint (Judge0 sandboxed compiler proxy)
+  if (url === '/api/execute' && method === 'POST') {
+    try {
+      const body = await parseJsonBody(req);
+      const { language_id, source_code, stdin = '', endpoint: clientEndpoint, apiKey: clientApiKey } = body;
+
+      if (!source_code || typeof source_code !== 'string') {
+        sendJson(res, 400, { error: 'source_code must be a non-empty string' });
+        return true;
+      }
+
+      if (!language_id || typeof language_id !== 'number') {
+        sendJson(res, 400, { error: 'valid language_id is required' });
+        return true;
+      }
+
+      if (source_code.length > 65536) {
+        sendJson(res, 400, { error: 'Source code exceeds maximum allowed size (64KB)' });
+        return true;
+      }
+
+      const targetEndpoint = (clientEndpoint?.trim() || process.env.JUDGE0_ENDPOINT?.trim() || 'https://ce.judge0.com').replace(/\/$/, '');
+      const apiKey = clientApiKey?.trim() || process.env.JUDGE0_API_KEY?.trim() || '';
+      const isRapidApi = targetEndpoint.includes('rapidapi.com');
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+
+      if (apiKey) {
+        if (isRapidApi) {
+          headers['X-RapidAPI-Key'] = apiKey;
+          headers['X-RapidAPI-Host'] = 'judge0-ce.p.rapidapi.com';
+        } else {
+          headers['X-Auth-Token'] = apiKey;
+        }
+      }
+
+      const base64Source = Buffer.from(source_code, 'utf-8').toString('base64');
+      const base64Stdin = Buffer.from(stdin || '', 'utf-8').toString('base64');
+
+      const submissionPayload = {
+        language_id,
+        source_code: base64Source,
+        stdin: base64Stdin,
+        cpu_time_limit: 5.0,
+        wall_time_limit: 10.0,
+        memory_limit: 128000
+      };
+
+      const submissionUrl = `${targetEndpoint}/submissions?base64_encoded=true&wait=true`;
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 15000);
+
+      try {
+        const judgeRes = await fetch(submissionUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(submissionPayload),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeout);
+
+        if (!judgeRes.ok) {
+          const errBody = await judgeRes.text();
+          let parsedErr: any;
+          try { parsedErr = JSON.parse(errBody); } catch (_) {}
+
+          sendJson(res, 200, {
+            error: `Backend compiler service returned status ${judgeRes.status} (${judgeRes.statusText})`,
+            details: parsedErr?.message || parsedErr?.error || errBody || 'Failed to submit code to Judge0',
+            isConfigured: judgeRes.status !== 401 && judgeRes.status !== 403
+          });
+          return true;
+        }
+
+        const data: any = await judgeRes.json();
+        const decodeB64 = (val?: string | null) => {
+          if (!val) return '';
+          try {
+            return Buffer.from(val, 'base64').toString('utf-8');
+          } catch (_) {
+            return val;
+          }
+        };
+
+        const stdout = decodeB64(data.stdout);
+        const stderr = decodeB64(data.stderr);
+        const compileOutput = decodeB64(data.compile_output);
+
+        sendJson(res, 200, {
+          stdout,
+          stderr,
+          compileOutput,
+          status: data.status?.description || 'Completed',
+          time: data.time ? `${data.time}s` : undefined,
+          memory: data.memory ? `${data.memory} KB` : undefined,
+          isConfigured: true
+        });
+        return true;
+      } catch (fetchErr: any) {
+        clearTimeout(timeout);
+        sendJson(res, 200, {
+          error: 'Could not connect to Judge0 execution service.',
+          details: `Connection to ${targetEndpoint} failed: ${fetchErr.message}. Ensure your Judge0 endpoint or RapidAPI credentials are valid.`,
+          isConfigured: false
+        });
+        return true;
+      }
+    } catch (err: any) {
+      sendJson(res, 500, { error: 'Internal execution proxy error', details: err.message });
+      return true;
+    }
+  }
+
   // ----------------------------------------------------
   // 1. POST /api/auth/register
   // ----------------------------------------------------
@@ -98,7 +243,7 @@ export async function handleAuthRoutes(req: IncomingMessage, res: ServerResponse
 
       const existingUser = findUserByEmail(email);
       if (existingUser) {
-        sendJson(res, 409, { error: 'An account with this email address already exists.' });
+        sendJson(res, 409, { error: 'An account with this email address is already registered.' });
         return true;
       }
 

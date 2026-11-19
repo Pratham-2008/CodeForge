@@ -39,12 +39,28 @@ const getJwtSecret = () => process.env.AUTH_SECRET || 'codeforge-super-secure-jw
 export const getAdminSetupSecret = (): string => process.env.ADMIN_SETUP_SECRET || 'CodeForgeAdmin2026!';
 export const ADMIN_SETUP_SECRET = getAdminSetupSecret();
 
-const DATA_DIR = path.resolve(process.cwd(), 'server', 'data');
+function getWritableDataDir(): string {
+  if (process.env.DATA_DIR) return process.env.DATA_DIR;
+  // In serverless environments (Vercel, Netlify, AWS Lambda), only /tmp is writable
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME || process.env.NETLIFY) {
+    return path.join('/tmp', 'codeforge-data');
+  }
+  return path.resolve(process.cwd(), 'server', 'data');
+}
+
+const DATA_DIR = getWritableDataDir();
 const DB_FILE = path.join(DATA_DIR, 'users.json');
 
+// In-memory cache to guarantee zero-crash resilience in serverless / read-only filesystems
+let inMemoryUsers: DbUser[] | null = null;
+
 function ensureDataDir() {
-  if (!fs.existsSync(DATA_DIR)) {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+  } catch (err: any) {
+    console.warn('[CodeForge DB] Notice: Filesystem read-only, operating with in-memory persistence fallback:', err.message);
   }
 }
 
@@ -103,24 +119,34 @@ export function verifyToken(token: string): { sub: string; email: string; role: 
 }
 
 function loadUsers(): DbUser[] {
+  if (inMemoryUsers !== null && inMemoryUsers.length > 0) {
+    return inMemoryUsers;
+  }
   ensureDataDir();
   if (!fs.existsSync(DB_FILE)) {
-    return [];
+    inMemoryUsers = inMemoryUsers || [];
+    return inMemoryUsers;
   }
   try {
     const data = fs.readFileSync(DB_FILE, 'utf-8');
-    return JSON.parse(data);
-  } catch (err) {
-    console.error('Error loading users DB:', err);
-    return [];
+    inMemoryUsers = JSON.parse(data);
+    return inMemoryUsers || [];
+  } catch (err: any) {
+    console.warn('[CodeForge DB] Read error, falling back to memory cache:', err.message);
+    return inMemoryUsers || [];
   }
 }
 
 function saveUsers(users: DbUser[]) {
-  ensureDataDir();
-  const tempFile = `${DB_FILE}.tmp`;
-  fs.writeFileSync(tempFile, JSON.stringify(users, null, 2), 'utf-8');
-  fs.renameSync(tempFile, DB_FILE);
+  inMemoryUsers = [...users];
+  try {
+    ensureDataDir();
+    const tempFile = `${DB_FILE}.tmp`;
+    fs.writeFileSync(tempFile, JSON.stringify(users, null, 2), 'utf-8');
+    fs.renameSync(tempFile, DB_FILE);
+  } catch (err: any) {
+    console.warn('[CodeForge DB] Disk write skipped (serverless/read-only), persisted in memory:', err.message);
+  }
 }
 
 export function initAuthDb() {

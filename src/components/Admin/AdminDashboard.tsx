@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useProject } from '../../context/ProjectContext';
 import { User, AdminStats } from '../../types/auth';
+import { apiFetch } from '../../config/api';
 
 export const AdminDashboard: React.FC = () => {
   const { token, user: currentUser } = useAuth();
@@ -61,18 +62,16 @@ export const AdminDashboard: React.FC = () => {
     setIsLoading(true);
     setErrorMsg(null);
     try {
-      const res = await fetch('/api/admin/users', {
+      const res = await apiFetch<{ users: User[]; stats: AdminStats }>('/api/admin/users', {
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         }
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setErrorMsg(data.error || 'Failed to fetch admin users.');
+      if (!res.ok || !res.data) {
+        setErrorMsg(res.error || 'Failed to fetch admin users.');
       } else {
-        setUsers(data.users || []);
-        setStats(data.stats || null);
+        setUsers(res.data.users || []);
+        setStats(res.data.stats || null);
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Network error fetching admin data.');
@@ -100,17 +99,15 @@ export const AdminDashboard: React.FC = () => {
   const handleToggleStatus = async (user: User) => {
     const nextStatus = user.status === 'Active' ? 'Inactive' : 'Active';
     try {
-      const res = await fetch(`/api/admin/users/${user.id}/status`, {
+      const res = await apiFetch(`/api/admin/users/${user.id}/status`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ status: nextStatus })
       });
-      const data = await res.json();
       if (!res.ok) {
-        addToast(data.error || 'Failed to update user status.', 'error');
+        addToast(res.error || 'Failed to update user status.', 'error');
       } else {
         addToast(`User ${user.fullName} is now ${nextStatus}.`, 'success');
         setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: nextStatus } : u));
@@ -132,16 +129,14 @@ export const AdminDashboard: React.FC = () => {
     if (!userToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await fetch(`/api/admin/users/${userToDelete.id}`, {
+      const res = await apiFetch(`/api/admin/users/${userToDelete.id}`, {
         method: 'DELETE',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         }
       });
-      const data = await res.json();
       if (!res.ok) {
-        addToast(data.error || 'Failed to delete user.', 'error');
+        addToast(res.error || 'Failed to delete user.', 'error');
       } else {
         addToast(`User ${userToDelete.fullName} deleted.`, 'success');
         setUsers(prev => prev.filter(u => u.id !== userToDelete.id));
@@ -173,11 +168,10 @@ export const AdminDashboard: React.FC = () => {
 
     setIsCreating(true);
     try {
-      const res = await fetch('/api/admin/users/create', {
+      const res = await apiFetch<{ user: User }>('/api/admin/users/create', {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           fullName: newFullName.trim(),
@@ -187,12 +181,11 @@ export const AdminDashboard: React.FC = () => {
           status: 'Active'
         })
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setCreateError(data.error || 'Failed to create user.');
+      if (!res.ok || !res.data) {
+        setCreateError(res.error || 'Failed to create user.');
       } else {
-        addToast(`Created ${newRole} account for ${data.user.fullName}`, 'success');
-        setUsers(prev => [data.user, ...prev]);
+        addToast(`Created ${newRole} account for ${res.data.user.fullName}`, 'success');
+        setUsers(prev => [res.data.user, ...prev]);
         setShowCreateModal(false);
         setNewFullName('');
         setNewEmail('');

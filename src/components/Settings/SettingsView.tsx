@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { useProject } from '../../context/ProjectContext';
 import { DEFAULT_SETTINGS } from '../../utils/storage';
+import { apiFetch } from '../../config/api';
 
 export const SettingsView: React.FC = () => {
   const { settings, updateSettings, themeMode, toggleThemeMode, addToast } = useProject();
@@ -32,13 +33,12 @@ export const SettingsView: React.FC = () => {
     setTestingConnection(true);
     setConnectionStatus('Testing connection to backend compiler...');
     try {
-      const res = await fetch('/api/health');
-      const data = await res.json();
-      if (data.status === 'ok') {
-        setConnectionStatus(`Connected: Judge0 endpoint configured (${data.judge0Endpoint})`);
+      const res = await apiFetch<{ status: string; judge0Endpoint: string }>('/api/health');
+      if (res.ok && res.data?.status === 'ok') {
+        setConnectionStatus(`Connected: Judge0 endpoint configured (${res.data.judge0Endpoint})`);
         addToast('Backend compiler proxy is healthy!', 'success');
       } else {
-        setConnectionStatus('Backend reachable, but Judge0 reported non-OK status.');
+        setConnectionStatus(`Backend response: ${res.error || 'Judge0 reported non-OK status.'}`);
       }
     } catch (err: any) {
       setConnectionStatus(`Connection failed: ${err.message}`);
