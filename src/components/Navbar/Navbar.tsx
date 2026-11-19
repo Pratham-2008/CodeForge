@@ -100,7 +100,8 @@ export const Navbar: React.FC = () => {
   };
 
   return (
-    <header className="h-14 bg-slate-900/95 dark:bg-[#0c1017]/95 backdrop-blur border-b border-slate-800 dark:border-slate-800/80 px-3 sm:px-4 flex items-center justify-between select-none z-30 transition-colors relative">
+    <>
+      <header className="h-14 bg-slate-900/95 dark:bg-[#0c1017]/95 backdrop-blur border-b border-slate-800 dark:border-slate-800/80 px-3 sm:px-4 flex items-center justify-between select-none z-30 transition-colors relative">
       {/* ============================================================ */}
       {/* LEFT: Brand Logo & Project Title (Editor view)               */}
       {/* ============================================================ */}
@@ -317,27 +318,28 @@ export const Navbar: React.FC = () => {
           </div>
         </button>
       </div>
+    </header>
 
-      {/* ============================================================ */}
-      {/* SLIDE-IN HAMBURGER NAVIGATION DRAWER & BACKDROP              */}
-      {/* ============================================================ */}
-      {isMenuOpen && (
-        <div 
-          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300"
-          onClick={() => setIsMenuOpen(false)}
-          aria-hidden="true"
-        />
-      )}
+    {/* ============================================================ */}
+    {/* SLIDE-IN HAMBURGER NAVIGATION DRAWER & BACKDROP              */}
+    {/* ============================================================ */}
+    {isMenuOpen && (
+      <div 
+        className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm transition-opacity duration-300"
+        onClick={() => setIsMenuOpen(false)}
+        aria-hidden="true"
+      />
+    )}
 
-      <aside
-        ref={drawerRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label="Site Navigation Drawer"
-        className={`fixed top-0 right-0 h-full w-80 sm:w-96 max-w-[85vw] bg-slate-900/98 dark:bg-[#0d121c]/98 backdrop-blur-xl border-l border-slate-800 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out select-none ${
-          isMenuOpen ? 'translate-x-0' : 'translate-x-full'
-        }`}
-      >
+    <aside
+      ref={drawerRef}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Site Navigation Drawer"
+      className={`fixed top-0 right-0 h-screen h-[100dvh] w-80 sm:w-96 max-w-[85vw] bg-slate-900/98 dark:bg-[#0d121c]/98 backdrop-blur-xl border-l border-slate-800 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out select-none ${
+        isMenuOpen ? 'translate-x-0' : 'translate-x-full'
+      }`}
+    >
         {/* Drawer Header */}
         <div className="h-14 px-5 border-b border-slate-800 flex items-center justify-between shrink-0">
           <div className="flex items-center gap-2.5">
@@ -361,7 +363,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Drawer Body (Scrollable) */}
-        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-5 text-slate-300 text-xs">
+        <div className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-5 text-slate-300 text-xs">
           {/* USER ACCOUNT CARD */}
           {isAuthenticated && user ? (
             <div className="p-3.5 rounded-xl bg-slate-950/80 border border-slate-800 shadow-inner">
@@ -681,6 +683,6 @@ export const Navbar: React.FC = () => {
         isOpen={showProfileModal} 
         onClose={() => setShowProfileModal(false)} 
       />
-    </header>
+    </>
   );
 };

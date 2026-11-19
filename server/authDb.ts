@@ -176,6 +176,27 @@ export function initAuthDb() {
     console.log('[Auth DB] Seeded default administrator: admin@codeforge.dev');
   }
 
+  // Seed Owner Administrator if not present
+  const ownerExists = users.some(u => u.email.toLowerCase() === 'prathamsrivastava58@gmail.com');
+  if (!ownerExists) {
+    const salt = crypto.randomBytes(16).toString('hex');
+    const ownerUser: DbUser = {
+      id: 'usr_admin_pratham',
+      fullName: 'Pratham Srivastava',
+      email: 'prathamsrivastava58@gmail.com',
+      passwordHash: hashPassword('Admin@CodeForge2026!', salt),
+      salt,
+      role: 'Admin',
+      status: 'Active',
+      createdAt: new Date().toISOString(),
+      lastLogin: new Date().toISOString(),
+      projectsCount: 10
+    };
+    users.push(ownerUser);
+    modified = true;
+    console.log('[Auth DB] Seeded administrator: prathamsrivastava58@gmail.com');
+  }
+
   // 2. Seed Sample User if not present
   const demoUserExists = users.some(u => u.email.toLowerCase() === 'user@codeforge.dev');
   if (!demoUserExists) {

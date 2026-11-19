@@ -11,7 +11,11 @@ export default async function handler(req: IncomingMessage, res: ServerResponse)
     if (!handled) {
       res.statusCode = 404;
       res.setHeader('Content-Type', 'application/json');
-      res.end(JSON.stringify({ error: 'Endpoint not found', path: req.url }));
+      res.end(JSON.stringify({ 
+        error: 'Endpoint not found', 
+        path: req.url,
+        matched: req.headers['x-matched-path'] || req.headers['x-forwarded-uri']
+      }));
     }
   } catch (err: any) {
     console.error('[CodeForge Vercel Function Error]:', err);

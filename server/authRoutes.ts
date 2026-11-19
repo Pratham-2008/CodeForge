@@ -56,7 +56,24 @@ function getBearerToken(req: IncomingMessage): string | null {
 }
 
 export async function handleAuthRoutes(req: IncomingMessage, res: ServerResponse): Promise<boolean> {
-  const url = req.url?.split('?')[0] || '';
+  let rawUrl = req.url || '';
+
+  // Extract rewritten URL if routed via Vercel / serverless (e.g. /api/index?route=/api/auth/login)
+  if (rawUrl.includes('route=')) {
+    try {
+      const parsed = new URL(rawUrl, 'http://localhost');
+      const routeParam = parsed.searchParams.get('route');
+      if (routeParam) rawUrl = routeParam;
+    } catch (_) {}
+  }
+
+  // Also check Vercel / proxy headers for original path
+  const matchedPath = (req.headers['x-matched-path'] as string) || (req.headers['x-forwarded-uri'] as string);
+  if (matchedPath && matchedPath.startsWith('/api') && (!rawUrl || rawUrl === '/api/index' || rawUrl === '/api')) {
+    rawUrl = matchedPath;
+  }
+
+  const url = rawUrl.split('?')[0] || '';
   const method = req.method;
 
   // Set Production-ready CORS Headers on all /api routes
