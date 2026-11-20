@@ -106,22 +106,10 @@ const MainView: React.FC = () => {
   return (
     <div className="flex-1 flex flex-col overflow-hidden relative">
       {navView === 'home' && <Dashboard />}
-      {navView === 'editor' && (
-        <ProtectedUserView>
-          <EditorLayout />
-        </ProtectedUserView>
-      )}
-      {navView === 'projects' && (
-        <ProtectedUserView>
-          <ProjectManager />
-        </ProtectedUserView>
-      )}
+      {navView === 'editor' && <EditorLayout />}
+      {navView === 'projects' && <ProjectManager />}
       {navView === 'docs' && <DocumentationView />}
-      {navView === 'settings' && (
-        <ProtectedUserView>
-          <SettingsView />
-        </ProtectedUserView>
-      )}
+      {navView === 'settings' && <SettingsView />}
       {navView === 'login' && <LoginPage />}
       {navView === 'signup' && <SignupPage />}
       {navView === 'admin' && <ProtectedAdminView />}

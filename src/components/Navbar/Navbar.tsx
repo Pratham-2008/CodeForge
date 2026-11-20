@@ -178,7 +178,86 @@ export const Navbar: React.FC = () => {
       </div>
 
       {/* ============================================================ */}
-      {/* RIGHT: Actions + Hamburger Menu Button                      */}
+      {/* CENTER: Main Navigation Tabs (Desktop & Tablet)              */}
+      {/* ============================================================ */}
+      <nav className="hidden lg:flex items-center gap-1 bg-slate-950/60 p-1 rounded-xl border border-slate-800/80 shadow-inner">
+        <button
+          onClick={() => handleNavigate('home')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            navView === 'home'
+              ? 'bg-cyan-500/15 text-cyan-400 font-semibold shadow-sm border border-cyan-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Home className="w-3.5 h-3.5" />
+          <span>Home</span>
+        </button>
+
+        <button
+          onClick={() => handleNavigate('editor')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            navView === 'editor'
+              ? 'bg-cyan-500/15 text-cyan-400 font-semibold shadow-sm border border-cyan-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <Code2 className="w-3.5 h-3.5" />
+          <span>Editor</span>
+        </button>
+
+        <button
+          onClick={() => handleNavigate('projects')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            navView === 'projects'
+              ? 'bg-cyan-500/15 text-cyan-400 font-semibold shadow-sm border border-cyan-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <FolderGit2 className="w-3.5 h-3.5" />
+          <span>Projects</span>
+        </button>
+
+        <button
+          onClick={() => handleNavigate('docs')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            navView === 'docs'
+              ? 'bg-cyan-500/15 text-cyan-400 font-semibold shadow-sm border border-cyan-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <BookOpen className="w-3.5 h-3.5" />
+          <span>Documentation</span>
+        </button>
+
+        <button
+          onClick={() => handleNavigate('settings')}
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            navView === 'settings'
+              ? 'bg-cyan-500/15 text-cyan-400 font-semibold shadow-sm border border-cyan-500/30'
+              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/60'
+          }`}
+        >
+          <SettingsIcon className="w-3.5 h-3.5" />
+          <span>Settings</span>
+        </button>
+
+        {user?.role === 'Admin' && (
+          <button
+            onClick={() => handleNavigate('admin')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+              navView === 'admin'
+                ? 'bg-indigo-500/25 text-indigo-300 shadow-sm border border-indigo-500/40'
+                : 'text-indigo-400 hover:text-indigo-200 hover:bg-indigo-500/10 border border-indigo-500/20'
+            }`}
+          >
+            <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Admin</span>
+          </button>
+        )}
+      </nav>
+
+      {/* ============================================================ */}
+      {/* RIGHT: Actions + Auth + Hamburger Menu Button               */}
       {/* ============================================================ */}
       <div className="flex items-center gap-1.5 sm:gap-2">
         {/* Editor-specific quick toolbar: Run / Save / Preview */}
@@ -264,6 +343,26 @@ export const Navbar: React.FC = () => {
           </button>
         )}
 
+        {/* Auth Buttons when Logged Out */}
+        {!isAuthenticated && (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => handleNavigate('login')}
+              className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium text-slate-300 hover:text-white hover:bg-slate-800/80 transition-all border border-slate-700/70"
+            >
+              <LogIn className="w-3.5 h-3.5 text-cyan-400" />
+              <span>Sign In</span>
+            </button>
+            <button
+              onClick={() => handleNavigate('signup')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 shadow-md shadow-cyan-500/20 transition-all hidden sm:flex"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Sign Up</span>
+            </button>
+          </div>
+        )}
+
         {/* User Mini Avatar / Status Indicator when authenticated */}
         {isAuthenticated && user && (
           <button
@@ -282,40 +381,47 @@ export const Navbar: React.FC = () => {
           </button>
         )}
 
+        {/* Theme Mode Quick Button */}
+        <button
+          onClick={toggleThemeMode}
+          className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800/70 border border-slate-700/60 transition-all hidden md:flex"
+          title={`Switch to ${themeMode === 'dark' ? 'Light' : 'Dark'} Mode`}
+        >
+          {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-indigo-400" />}
+        </button>
+
         <div className="h-4 w-[1px] bg-slate-800 mx-0.5" />
 
-        {/* ============================================================ */}
-        {/* HAMBURGER MENU BUTTON (Three Horizontal Lines)               */}
-        {/* ============================================================ */}
+        {/* HAMBURGER MENU BUTTON (Three Horizontal Lines) */}
         <button
           onClick={() => setIsMenuOpen(!isMenuOpen)}
           aria-label="Toggle navigation menu"
           aria-expanded={isMenuOpen}
-          className={`p-2 rounded-lg border transition-all relative group focus:outline-none ${
+          className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg border transition-all relative group focus:outline-none ${
             isMenuOpen 
               ? 'bg-cyan-500/15 text-cyan-400 border-cyan-500/40 shadow-md shadow-cyan-500/20' 
               : 'text-slate-300 hover:text-white bg-slate-800/80 hover:bg-slate-800 border-slate-700/80'
           }`}
           title="Open Navigation Menu"
         >
-          {/* Classic 3-line hamburger icon */}
-          <div className="w-5 h-5 flex flex-col justify-center items-center gap-1">
+          <div className="w-4 h-4 flex flex-col justify-center items-center gap-1">
             <span 
-              className={`block h-0.5 w-4 bg-current rounded-full transition-transform duration-200 ${
+              className={`block h-0.5 w-3.5 bg-current rounded-full transition-transform duration-200 ${
                 isMenuOpen ? 'rotate-45 translate-y-1.5' : ''
               }`} 
             />
             <span 
-              className={`block h-0.5 w-4 bg-current rounded-full transition-opacity duration-200 ${
+              className={`block h-0.5 w-3.5 bg-current rounded-full transition-opacity duration-200 ${
                 isMenuOpen ? 'opacity-0' : 'opacity-100'
               }`} 
             />
             <span 
-              className={`block h-0.5 w-4 bg-current rounded-full transition-transform duration-200 ${
+              className={`block h-0.5 w-3.5 bg-current rounded-full transition-transform duration-200 ${
                 isMenuOpen ? '-rotate-45 -translate-y-1.5' : ''
               }`} 
             />
           </div>
+          <span className="text-xs font-semibold hidden md:inline">Menu</span>
         </button>
       </div>
     </header>
